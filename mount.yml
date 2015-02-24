@@ -1,4 +1,41 @@
 ---
 - hosts: localhost
+
   vars:
-  roles:
+    - alternate_id: 1010
+    - host_os: 'darwin'
+    - host_gid: 20
+    - host_uid: 500
+    - web_group: 'www-data'
+
+  tasks:
+
+    - name: Move the 'dialout' group out of the way (OSX hosts).
+      group:
+        name: 'dialout'
+        gid: "{{ alternate_id }}"
+      when: "'darwin' in host_os"
+
+    - name: Re-map group ownership of any files owned by 'dialout' group (OSX hosts).
+      command: "/usr/bin/find / -group {{ host_gid }} -not -path \"/proc/*\" -exec chgrp -h {{ alternate_id }} {} ';'"
+      when: "'darwin' in host_os"
+
+    - name: Move the 'vagrant' group out of the way (GNU/Linux hosts).
+      group:
+        name: 'vagrant'
+        gid: "{{ alternate_id }}"
+      when: "'linux' in host_os"
+
+    - name: Move the 'vagrant' user out of the way (GNU/Linux hosts).
+      user:
+        name: 'vagrant'
+        uid: "{{ alternate_id }}"
+      when: "'linux' in host_os"
+
+    - name: Map web group to host GID
+      group:
+        name: "{{ web_group }}"
+        gid: "{{ host_gid }}"
+
+    - name: Re-map group ownership of any files owned by web group
+      command: "/usr/bin/find / -group 33 -not -path \"/proc/*\" -exec chgrp -h {{ host_gid }} {} ';'"

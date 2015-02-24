@@ -46,6 +46,11 @@ module VagrantPlugins
               ansible_playbook << "-i /tmp/inventory "
               ansible_playbook << "--connection=local "
               ansible_playbook << "--sudo "
+              ansible_playbook << "--extra-vars \""
+              ansible_playbook << "host_os="+RUBY_PLATFORM+' '
+              ansible_playbook << "host_gid="+Process.gid.to_s+' '
+              ansible_playbook << "host_uid="+Process.uid.to_s+' '
+              ansible_playbook << "\""
               @machine.communicate.sudo(ansible_playbook) do |type, data|
                 if !data.chomp.empty?
                   @machine.ui.info(data.chomp)

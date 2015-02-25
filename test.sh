@@ -68,7 +68,7 @@ echo -e "\n ${green}** ALL TESTS PASSED **\n"; tput sgr0
 echo 'Tearing down VM.'
 vagrant destroy -f
 
-if (( $? > 0 )); then
+if (( ! $? > 0 )); then
   echo 'Removing test files.'
   rm nfs_test/*
 fi

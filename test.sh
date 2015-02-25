@@ -3,6 +3,11 @@ red='\E[31m\033[1m'
 green='\E[32m\033[1m'
 blue='\E[34m\033[1m'
 
+uid=`id -u`
+gid=`id -g`
+username=`whoami`
+group=`id -gn`
+
 report_result() {
   if (( $? > 0 )); then
     echo -e "${red}ERROR"
@@ -22,7 +27,7 @@ echo 'Checking whether test user exists.'
 vagrant ssh -c'getent passwd test_user' -- -q > /dev/null
 if (( $? > 0 )); then
   echo 'Test user not found. Creating test user on VM.'
-  vagrant ssh -c'sudo adduser test_user -u 1000 --gid 1000 --disabled-password --gecos ""' -- -q > /dev/null
+  vagrant ssh -c"sudo adduser test_user -u ${uid} --gid ${gid} --disabled-password --gecos ''" -- -q > /dev/null
   report_result
 else
   echo -e "${green}OK"; tput sgr0
@@ -56,7 +61,7 @@ echo 'Checking remote test file contents locally.'
 cat nfs_test/remote.txt | grep ^test4321 | report_result
 
 echo 'Checking remote test file ownership locally.'
-ls -la nfs_test/remote.txt 2>&1 | grep "`whoami` `id -gn`" | report_result
+ls -la nfs_test/remote.txt 2>&1 | grep "${username} ${group}" | report_result
 
 echo -e "\n ${green}** ALL TESTS PASSED **\n"; tput sgr0
 

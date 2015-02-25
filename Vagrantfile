@@ -6,6 +6,11 @@ Vagrant.configure(2) do |config|
 
   require "./mount.rb"
 
-  config.vm.provision "shell", inline: 'echo $SUDO_USER', run: "always"
+  config.vm.network 'private_network', ip: "10.234.234.234"
+
+  config.vm.synced_folder './nfs_test', '/tmp/nfs_test',
+    type: 'nfs',
+    create: true,
+    nfs: 3
 
 end

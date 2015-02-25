@@ -4,7 +4,7 @@
 Vagrant.configure(2) do |config|
   config.vm.box = "ubuntu/trusty64"
 
-  require "./mount.rb"
+  require_relative "mount.rb"
 
   config.vm.network 'private_network', ip: "10.234.234.234"
 

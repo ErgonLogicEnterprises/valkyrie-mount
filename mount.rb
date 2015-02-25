@@ -61,6 +61,7 @@ module VagrantPlugins
               @machine.communicate.instance_variable_get(:@connection).close
 
               @ui.info "Writing semaphore file."
+              system('mkdir -p .valkyrie/cache')
               system("date > #{semaphore}")
 
             end

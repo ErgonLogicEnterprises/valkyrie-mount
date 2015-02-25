@@ -1,7 +1,7 @@
 #!/bin/bash
-red='\E[31m\033[1m'
-green='\E[32m\033[1m'
-blue='\E[34m\033[1m'
+red='\033[00;31m'
+green='\033[00;32m'
+blue='\033[00;34m'
 
 uid=`id -u`
 gid=`id -g`

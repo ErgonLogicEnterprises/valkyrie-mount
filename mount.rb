@@ -1,9 +1,9 @@
 # These faux plugins make NFS mount in an easy read-write capacity.
 
 module VagrantPlugins
-  module ValkyrieMount
+  module Valkyrie
     module Action
-      class ValkyrieMount
+      class Mount
 
         def initialize(app, env)
           @app = app
@@ -67,23 +67,46 @@ module VagrantPlugins
           end
         end
       end
+
+      class RemoveSemaphore
+
+        def initialize(app, env)
+          @app = app
+          @machine = env[:machine]
+          @ui = env[:ui]
+          @logger = Log4r::Logger.new("ValkyrieMount::action::ValkyrieMount")
+        end
+
+        def call(env)
+          semaphore = ".valkyrie/cache/first_run_complete"
+          machine_action = env[:machine_action]
+          if machine_action == :destroy
+            if File.exist?(semaphore)
+              File.delete(semaphore)
+              @ui.info "Removing semaphore"
+            end
+          end
+        end
+      end
     end
   end
 end
 
 module VagrantPlugins
-  module ValkyrieMount
+  module Valkyrie
     class Plugin < Vagrant.plugin('2')
       name 'ValkyrieMount'
       description <<-DESC
         Improve NFS workflows for local dev.
       DESC
 
-      action_hook("ValkyrieMount", :machine_action_up) do |hook|
-        hook.append(Action::ValkyrieMount)
+      action_hook("Valkyrie", :machine_action_up) do |hook|
+        hook.append(Action::Mount)
       end
 
+      action_hook("Valkyrie", :machine_action_destroy) do |hook|
+        hook.append(Action::RemoveSemaphore)
+      end
     end
   end
 end
-

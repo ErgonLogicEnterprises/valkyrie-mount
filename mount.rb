@@ -10,24 +10,27 @@ module VagrantPlugins
           @machine = env[:machine]
           @ui = env[:ui]
           @logger = Log4r::Logger.new("ValkyrieMount::action::ValkyrieMount")
+          @plugin_dir = File.expand_path(File.dirname(__FILE__))
+          @project_path = ENV.fetch('VALKYRIE_PROJECT_PATH', '.')
+          @semaphore_path = @project_path+'/.valkyrie/cache/first_run_complete'
         end
 
         def call(env)
-          semaphore = ".valkyrie/cache/first_run_complete"
           machine_action = env[:machine_action]
           if machine_action == :up
-            if !File.exist?(semaphore)
+            if !File.exist?(@semaphore_path)
 
-              @ui.info "Setting up SSH access for the 'ubuntu' user."
+              @ui.info "Fixing NFS user/group mapping."
+              @ui.detail "Setting up SSH access for the 'ubuntu' user."
               @machine.communicate.sudo("cp /home/vagrant/.ssh/authorized_keys /home/ubuntu/.ssh/authorized_keys")
               @machine.communicate.sudo("chown ubuntu:ubuntu /home/ubuntu/.ssh/authorized_keys")
               @machine.communicate.sudo("chmod 600 /home/ubuntu/.ssh/authorized_keys")
 
-              @ui.info "Refreshing SSH connection, to login as 'ubuntu'."
+              @ui.detail "Refreshing SSH connection, to login as 'ubuntu'."
               @machine.communicate.instance_variable_get(:@connection).close
               @machine.config.ssh.username = 'ubuntu'
 
-              @ui.info "Installing Ansible from sources."
+              @ui.detail "Installing Ansible from sources."
               ansible_bootstrap = "https://raw.githubusercontent.com/GetValkyrie/ansible-bootstrap/master/install-ansible.sh"
               install_ansible = "curl -s #{ansible_bootstrap} | /bin/sh"
               @machine.communicate.sudo(install_ansible) do |type, data|
@@ -36,9 +39,9 @@ module VagrantPlugins
                 end
               end
 
-              @ui.info "Running Ansible playbook to re-map users and groups."
-              @machine.communicate.upload('mount.yml', "/tmp/mount.yml")
-              @machine.communicate.upload('inventory', "/tmp/inventory")
+              @ui.detail "Running Ansible playbook to re-map users and groups."
+              @machine.communicate.upload(@plugin_dir+'/mount.yml', "/tmp/mount.yml")
+              @machine.communicate.upload(@plugin_dir+'/inventory', "/tmp/inventory")
               ansible_playbook = "PYTHONUNBUFFERED=1 "
               ansible_playbook << "ANSIBLE_FORCE_COLOR=true "
               ansible_playbook << "ansible-playbook "
@@ -57,34 +60,27 @@ module VagrantPlugins
                 end
               end
 
-              @ui.info "Refreshing SSH connection, to login normally."
+              @ui.detail "Refreshing SSH connection, to login normally."
               @machine.communicate.instance_variable_get(:@connection).close
 
-              @ui.info "Writing semaphore file."
-              system('mkdir -p .valkyrie/cache')
-              system("date > #{semaphore}")
+              @ui.detail "Writing semaphore file."
+              cache_path = @project_path+'/.valkyrie/cache'
+              system("mkdir -p #{cache_path}")
+              system("date > #{@semaphore_path}")
 
             end
           end
         end
       end
 
-      class RemoveSemaphore
-
-        def initialize(app, env)
-          @app = app
-          @machine = env[:machine]
-          @ui = env[:ui]
-          @logger = Log4r::Logger.new("ValkyrieMount::action::ValkyrieMount")
-        end
+      class RemoveSemaphore < Mount
 
         def call(env)
-          semaphore = ".valkyrie/cache/first_run_complete"
           machine_action = env[:machine_action]
           if machine_action == :destroy
-            if File.exist?(semaphore)
-              File.delete(semaphore)
-              @ui.info "Removing semaphore"
+            if File.exist?(@semaphore_path)
+              @ui.detail "Removing semaphore"
+              File.delete(@semaphore_path)
             end
           end
         end

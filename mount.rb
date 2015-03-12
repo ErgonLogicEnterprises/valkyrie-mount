@@ -28,6 +28,7 @@ module VagrantPlugins
 
               @ui.detail "Refreshing SSH connection, to login as 'ubuntu'."
               @machine.communicate.instance_variable_get(:@connection).close
+              current_ssh_username = @machine.config.ssh.username
               @machine.config.ssh.username = 'ubuntu'
 
               @ui.detail "Installing Ansible from sources."
@@ -62,6 +63,7 @@ module VagrantPlugins
 
               @ui.detail "Refreshing SSH connection, to login normally."
               @machine.communicate.instance_variable_get(:@connection).close
+              @machine.config.ssh.username = current_ssh_username
 
               @ui.detail "Writing semaphore file."
               cache_path = @project_path+'/.valkyrie/cache'

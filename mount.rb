@@ -13,11 +13,11 @@ module VagrantPlugins
           @plugin_dir = File.expand_path(File.dirname(__FILE__))
           @project_path = ENV.fetch('VALKYRIE_PROJECT_PATH', '.')
           @semaphore_path = @project_path+'/.valkyrie/cache/first_run_complete'
+          @current_ssh_username = @machine.config.ssh.username
         end
 
         def call(env)
-          machine_action = env[:machine_action]
-          if machine_action == :up
+          if env[:machine_action] == :up
             if !File.exist?(@semaphore_path)
 
               @ui.info "Fixing NFS user/group mapping."
@@ -28,7 +28,6 @@ module VagrantPlugins
 
               @ui.detail "Refreshing SSH connection, to login as 'ubuntu'."
               @machine.communicate.instance_variable_get(:@connection).close
-              current_ssh_username = @machine.config.ssh.username
               @machine.config.ssh.username = 'ubuntu'
 
               @ui.detail "Installing Ansible from sources."
@@ -63,7 +62,7 @@ module VagrantPlugins
 
               @ui.detail "Refreshing SSH connection, to login normally."
               @machine.communicate.instance_variable_get(:@connection).close
-              @machine.config.ssh.username = current_ssh_username
+              @machine.config.ssh.username = @current_ssh_username
 
               @ui.detail "Writing semaphore file."
               cache_path = @project_path+'/.valkyrie/cache'
@@ -72,19 +71,22 @@ module VagrantPlugins
 
             end
           end
+          # Proceed with the rest of the middleware stack
+          @app.call(env)
         end
       end
 
       class RemoveSemaphore < Mount
 
         def call(env)
-          machine_action = env[:machine_action]
-          if machine_action == :destroy
+          if env[:machine_action] == :destroy
             if File.exist?(@semaphore_path)
               @ui.detail "Removing semaphore"
               File.delete(@semaphore_path)
             end
           end
+          # Proceed with the rest of the middleware stack
+          @app.call(env)
         end
       end
     end
@@ -93,7 +95,7 @@ end
 
 module VagrantPlugins
   module Valkyrie
-    class Plugin < Vagrant.plugin('2')
+    class MountPlugin < Vagrant.plugin('2')
       name 'ValkyrieMount'
       description <<-DESC
         Improve NFS workflows for local dev.

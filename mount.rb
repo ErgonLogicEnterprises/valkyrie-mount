@@ -10,6 +10,7 @@ module VagrantPlugins
           @machine = env[:machine]
           @ui = env[:ui]
           @logger = Log4r::Logger.new("ValkyrieMount::action::ValkyrieMount")
+          @valkyrie_vms = ENV.fetch('VALKYRIE_VMS', 'valkyrie').split(',')
           @plugin_dir = File.expand_path(File.dirname(__FILE__))
           @project_path = ENV.fetch('VALKYRIE_PROJECT_PATH', '.')
           @semaphore_path = @project_path+'/.valkyrie/cache/first_run_complete'
@@ -17,22 +18,24 @@ module VagrantPlugins
         end
 
         def call(env)
-          if env[:machine_action] == :up
-            @ui.info "Checking NFS user/group mapping."
-            if !File.exist?(@semaphore_path)
-              @ui.info "Fixing NFS user/group mapping."
-              @ui.detail "Setting up SSH access for the 'ubuntu' user."
-              grant_ssh_access
-              @ui.detail "Refreshing SSH connection, to login as 'ubuntu'."
-              refresh_ssh_connection('ubuntu')
-              @ui.detail "Installing Ansible from sources."
-              install_ansible
-              @ui.detail "Running Ansible playbook to re-map users and groups."
-              run_playbook
-              @ui.detail "Refreshing SSH connection, to login normally."
-              refresh_ssh_connection(@current_ssh_username)
-              @ui.detail "Writing semaphore file."
-              write_semaphore
+          if valkyrie_vm?
+            if env[:machine_action] == :up
+              @ui.info "Checking NFS user/group mapping."
+              if !File.exist?(@semaphore_path)
+                @ui.info "Fixing NFS user/group mapping."
+                @ui.detail "Setting up SSH access for the 'ubuntu' user."
+                grant_ssh_access
+                @ui.detail "Refreshing SSH connection, to login as 'ubuntu'."
+                refresh_ssh_connection('ubuntu')
+                @ui.detail "Installing Ansible from sources."
+                install_ansible
+                @ui.detail "Running Ansible playbook to re-map users and groups."
+                run_playbook
+                @ui.detail "Refreshing SSH connection, to login normally."
+                refresh_ssh_connection(@current_ssh_username)
+                @ui.detail "Writing semaphore file."
+                write_semaphore
+              end
             end
           end
           # Proceed with the rest of the middleware stack
@@ -88,15 +91,21 @@ module VagrantPlugins
           system("date > #{@semaphore_path}")
         end
 
+        def valkyrie_vm?
+          @valkyrie_vms.include?(@machine.name.to_s)
+        end
+
       end
 
       class RemoveSemaphore < Mount
 
         def call(env)
-          if env[:machine_action] == :destroy
-            if File.exist?(@semaphore_path)
-              @ui.detail "Removing semaphore"
-              delete_semaphore
+          if valkyrie_vm?
+            if env[:machine_action] == :destroy
+              if File.exist?(@semaphore_path)
+                @ui.detail "Removing semaphore"
+                delete_semaphore
+              end
             end
           end
           # Proceed with the rest of the middleware stack

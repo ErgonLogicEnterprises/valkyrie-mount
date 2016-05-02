@@ -49,7 +49,7 @@ module VagrantPlugins
         end
 
         def install_ansible
-          ansible_bootstrap = "https://raw.githubusercontent.com/GetValkyrie/ansible-bootstrap/master/install-ansible.sh"
+          ansible_bootstrap = "https://raw.githubusercontent.com/ErgonLogicEnterprises/ansible-bootstrap/master/install-ansible-ppa.sh"
           install_ansible = "curl -s #{ansible_bootstrap} | /bin/sh"
           @machine.communicate.sudo(install_ansible) do |type, data|
             if !data.chomp.empty?
